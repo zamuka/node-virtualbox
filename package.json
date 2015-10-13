@@ -2,19 +2,24 @@
   "name": "virtualbox",
   "version": "0.1.2",
   "description": "A library to interact with VirtualBox.",
-  "author": "Azer Koculu <azer@kodfabrik.com>",
+  "author": {
+    "name": "Azer Koculu",
+    "email": "azer@kodfabrik.com"
+  },
   "licenses": [
     {
       "type": "MIT",
       "url": "https://raw.githubusercontent.com/Node-Virtualization/node-virtualbox/master/LICENSE"
     }
   ],
-  "bugs": "https://github.com/Node-Virtualization/node-virtualbox/issues",
+  "bugs": {
+    "url": "https://github.com/Node-Virtualization/node-virtualbox/issues"
+  },
   "contributors": [
     {
       "name": "Azer Koculu",
-      "url": "http://azer.bike",
-      "email": "azer@kodfabrik.com"
+      "email": "azer@kodfabrik.com",
+      "url": "http://azer.bike"
     },
     {
       "name": "Michael Sanford",
@@ -51,7 +56,7 @@
   "main": "./lib/virtualbox",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Node-Virtualization/node-virtualbox.git"
+    "url": "git+https://github.com/Node-Virtualization/node-virtualbox.git"
   },
   "dependencies": {
     "log4js": "0.x"
@@ -62,5 +67,12 @@
   },
   "engines": {
     "engine": "node >= 0.4.1"
-  }
+  },
+  "readme": "# node-virtualbox\n\nA JavaScript library to interact with [VirtualBox](https://www.virtualbox.org/) virtual machines.\n\n# Installation\n\nObtain the package\n```bash\n$ npm install virtualbox [--save] [-g]\n```\n\nand then use it\n\n```javascript\nvar virtualbox = require('virtualbox');\n```\n\nThe general formula for commands is:\n\n> virtualbox. **API command** ( \"**registered vm name**\", **[parameters]**, **callback** );\n\nAvailable API commands are listed at the end of this document.\n\n# Controlling Power and State\n\nnode-virtualbox provides convenience methods to command the guest machine's power state in the customary ways.\n\n## Starting a cold machine: Two ways\nVirtual machines will *start headless by default*, but you can pass a boolean parameter to start them with a GUI:\n\n```javascript\nvirtualbox.start(\"machine_name\", true, function start_callback(error) {\n  if (error) throw error;\n  console.log(\"Virtual Machine has started WITH A GUI!\");\n});\n\n```\n\nSo as not to break pre-0.1.0 implementations, the old method still works (which also defaults to headless):\n```javascript\nvirtualbox.start(\"machine_name\", function start_callback(error) {\n  if (error) throw error;\n  console.log(\"Virtual Machine has started HEADLESS!\");\n});\n```\n\n## Stopping a machine\n:warning: **Note:** For historical reasons, `.stop` is an alias to `.savestate`.\n```javascript\nvirtualbox.stop(\"machine_name\", function stop_callback(error) {\n  if (error) throw error;\n  console.log(\"Virtual Machine has been saved\");\n});\n\n```\n\nTo halt a machine completely, you can use `poweroff` or `acpipowerbutton`:\n```javascript\nvirtualbox.poweroff(\"machine_name\", function poweroff_callback(error) {\n  if (error) throw error;\n  console.log(\"Virtual Machine has been powered off!\");\n});\n```\n\n```javascript\nvirtualbox.acpipowerbutton(\"machine_name\", function acpipower_callback(error) {\n  if (error) throw error;\n  console.log(\"Virtual Machine's ACPI power button was pressed.\");\n});\n```\n\n## Pausing, Saving and Resuming a machine\nNoting the caveat above that `.stop` is actually an alias to `.savestate`...\n```javascript\nvirtualbox.pause(\"machine_name\", function pause_callback(error) {\n  if (error) throw error;\n  console.log(\"Virtual Machine is now paused!\");\n});\n```\n\n```javascript\nvirtualbox.savestate(\"machine_name\", function save_callback(error) {\n  if (error) throw error;\n  console.log(\"Virtual Machine is now paused!\");\n});\n```\n\nAnd, in the same family, `acpisleepbutton`:\n```javascript\nvirtualbox.acpisleepbutton(\"machine_name\", function acpisleep_callback(error) {\n  if (error) throw error;\n  console.log(\"Virtual Machine's ACPI sleep button signal was sent.\");\n});\n```\n\nNote that you should probably *resume* a machine which is in one of the above three states.\n```javascript\nvirtualbox.resume(\"machine_name\", function resume_callback(error) {\n  if (error) throw error;\n  console.log(\"Virtual Machine is now paused!\");\n});\n```\n\nAnd, of course, a reset button method:\n```javascript\nvirtualbox.reset(\"machine_name\", function reset_callback(error) {\n  if (error) throw error;\n  console.log(\"Virtual Machine's reset button was pressed!\");\n});\n```\n\n# Controlling the guest OS\n\n## Running programs in the guest\nThis method takes an options object with the name of the virtual machine, the path to the binary to be executed and any parameters to pass:\n```javascript\nvar options = {\n  vm: \"machine_name\",\n  cmd: \"C:\\\\Program Files\\\\Internet Explorer\\\\iexplore.exe\",\n  params: \"https://google.com\"\n}\n\nvirtualbox.exec(options, function exec_callback(error) {\n    if (error) throw error;\n    console.log('Started Internet Explorer...');\n});\n```\n\n### Executing commands as Administrators on Windows guests\nPass username and password information in an `options` object:\n\n```javascript\nvar options = {\n  vm: \"machine_name\",\n  user:\"Administrator\",\n  password: \"123456\",\n  cmd: \"C:\\\\Program Files\\\\Internet Explorer\\\\iexplore.exe\",\n  params: \"https://google.com\"\n};\n```\n\n## Killing programs in the guest\nTasks can be killed in the guest as well. In Windows guests this calls `taskkill.exe /im` and on Linux, BSD and OS X (Darwin) guests, it calls `sudo killall`:\n```javascript\nvirtualbox.kill({\n    vm: \"machine_name\",\n    cmd: \"iexplore.exe\"\n}, function kill_callback(error) {\n    if (error) throw error;\n    console.log('Terminated Internet Explorer.');\n});\n```\n\n## Sending keystrokes to a virtual machine\nKeyboard scan code sequences can be piped directly to a virtual machine's console:\n```javascript\nvar SCAN_CODES = virtualbox.SCAN_CODES;\nvar sequence = [\n  { key: 'SHIFT', type: 'make',  code: SCAN_CODES['SHIFT']},\n  { key: 'A',     type: 'make',  code: SCAN_CODES['A']},\n  { key: 'SHIFT', type: 'break', code: SCAN_CODES.getBreakCode('SHIFT')},\n  { key: 'A',     type: 'break', code: SCAN_CODES.getBreakCode('A')}\n];\n\nvirtualbox.keyboardputscancode(\"machine_name\", sequence, function keyscan_callback(err) {\n    if (error) throw error;\n    console.log('Sent SHIFT A');\n});\n```\n\n# Meta information about machine\nList all registered machines, returns an array:\n```javascript\nvirtualbox.list(function list_callback(machines, error) {\n  if (error) throw error;\n  // Act on machines\n});\n```\n\nObtaining a guest property by [key name](https://www.virtualbox.org/manual/ch04.html#guestadd-guestprops):\n```javascript\nvar options = {\n  vm: \"machine_name\",\n  key: \"/VirtualBox/GuestInfo/Net/0/V4/IP\"\n}\n\nvirtualbox.guestproperty(function guestproperty_callback(machines, error) {\n  if (error) throw error;\n  // Act on machines\n});\n```\n\n# Putting it all together\n\n```javascript\nvar virtualbox = require('virtualbox');\n\nvirtualbox.start(\"machine_name\", function start_callback(error) {\n\n    if (error) throw error;\n\n    console.log('VM \"w7\" has been successfully started');\n\n    virtualbox.exec({\n        vm: \"machine_name\",\n        cmd: \"C:\\\\Program Files\\\\Internet Explorer\\\\iexplore.exe\",\n        params: \"http://google.com\"\n    }, function (error) {\n\n        if (error) throw error;\n        console.log('Running Internet Explorer...');\n\n    });\n\n});\n```\n\n# Available Methods\n\n`virtualbox`\n  - `.pause({vm:\"machine_name\"}, callback)`\n  - `.reset({vm:\"machine_name\"}, callback)`\n  - `.resume({vm:\"machine_name\"}, callback)`\n  - `.start({vm:\"machine_name\"}, callback)` and `.start({vm:\"machine_name\"}, true, callback)`\n  - `.stop({vm:\"machine_name\"}, callback)`\n  - `.savestate({vm:\"machine_name\"}, callback)`\n  - `.poweroff({vm:\"machine_name\"}, callback)`\n  - `.acpisleepbutton({vm:\"machine_name\"}, callback)`\n  - `.acpipowerbutton({vm:\"machine_name\"}, callback)`\n  - `.guestproperty({vm:\"machine_name\", property: \"propname\"}, callback)`\n  - `.exec(){vm: \"machine_name\", cmd: \"C:\\\\Program Files\\\\Internet Explorer\\\\iexplore.exe\", params: \"http://google.com\"}, callback)`\n  - `.exec(){vm: \"machine_name\", user:\"Administrator\", password: \"123456\", cmd: \"C:\\\\Program Files\\\\Internet Explorer\\\\iexplore.exe\", params: \"http://google.com\"}, callback)`\n  - `.keyboardputscancode(\"machine_name\", [scan_codes], callback)`\n  - `.kill({vm:\"machine_name\"}, callback)`\n  - `.list(callback)`\n\n# Troubleshooting\n\n - Make sure that Guest account is enabled on the VM.\n - Make sure your linux guest can `sudo` with `NOPASSWD` (at least for now).\n - VMs start headlessly by default: if you're having trouble with executing a command, start the VM with GUI and observe the screen after executing same command.\n - To avoid having \"Concurrent guest process limit is reached\" error message, execute your commands as an administrator.\n - Don't forget that this whole thing is asynchronous, and depends on the return of `vboxmanage` *not* the actual running state/runlevel of services within the guest. See https://github.com/Node-Virtualization/node-virtualbox/issues/9\n\n# More Examples\n* [npm tests](https://github.com/Node-Virtualization/node-virtualbox/tree/master/test)\n",
+  "readmeFilename": "README.md",
+  "homepage": "https://github.com/Node-Virtualization/node-virtualbox#readme",
+  "_id": "virtualbox@0.1.2",
+  "_shasum": "f416dd3867b2963d125cb72233d470caa3e486ce",
+  "_resolved": "https://github.com/zamuka/node-virtualbox/tarball/b0f6bbcbcd8487c361911fc1e1567d9ca0d5f178",
+  "_from": "https://github.com/zamuka/node-virtualbox/tarball/b0f6bbcbcd8487c361911fc1e1567d9ca0d5f178"
 }
